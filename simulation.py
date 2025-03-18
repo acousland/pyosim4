@@ -2,7 +2,15 @@ import math
 import random
 import json
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 from enum import Enum
+
+generations = 20
+population = 10
+steps_per_generation = 50
+mutation_rate = 0.01
+survivor_fraction = 0.2
+visualise_interval = 2
 
 # --- Enums for Sensors and Actions ---
 class Sensor(Enum):
@@ -19,7 +27,7 @@ class Sensor(Enum):
     BARRIER_FWD = 10
     BARRIER_LR = 11
     OSC1 = 12
-    POPULATION = 13
+    POPULATION = 10
     POPULATION_FWD = 14
     POPULATION_LR = 15
     RANDOM = 16
@@ -71,7 +79,7 @@ class Coord:
 
     def ray_sameness(self, other):
         dot = self.x * other.x + self.y * other.y
-        mag = math.sqrt(self.x**2 + self.y**2) * math.sqrt(other.x**2 + other.y**2)
+        mag = math.sqrt(self.x**2 + self.y**2) * math.sqrt(other.x**2 + self.y**2)
         return 1.0 if mag == 0 else dot / mag
 
 # --- Gene and Genome ---
@@ -173,8 +181,10 @@ class Indiv:
         if actions[Action.MOVE_RANDOM.value] > 0.5:
             move_vector += Coord(random.choice([-1,0,1]), random.choice([-1,0,1]))
 
+        print(f"Before move: ({self.loc.x}, {self.loc.y})")
         self.loc.x += max(-1, min(1, move_vector.x))
         self.loc.y += max(-1, min(1, move_vector.y))
+        print(f"After move: ({self.loc.x}, {self.loc.y})")
 
         if 0 <= self.loc.x < len(signal_layer.grid) and 0 <= self.loc.y < len(signal_layer.grid[0]):
             if actions[Action.EMIT_SIGNAL0.value] > 0.5:
@@ -242,6 +252,10 @@ class Simulation:
         self.params = Parameters(config_file)
         self.population = [Indiv() for _ in range(self.params.population)]
         self.signals = SignalLayer(self.params.size_x, self.params.size_y)
+        self.fig, self.ax = plt.subplots()
+        self.fig.patch.set_facecolor('white')  # Set the figure background color to white
+        self.ax.set_facecolor('white')  # Set the axes background color to white
+        self.generation = 0
 
     def run_generation(self):
         for _ in range(self.params.steps_per_generation):
@@ -258,29 +272,40 @@ class Simulation:
             survivors = random.sample(self.population, 1)
         self.population = [Indiv(random.choice(survivors).genome.copy().mutate(self.params.mutation_rate)) for _ in range(self.params.population)]
 
-    def visualise(self, generation):
+    def visualise(self):
         grid = [[0 for _ in range(self.params.size_y)] for _ in range(self.params.size_x)]
         for indiv in self.population:
             if indiv.alive:
                 x, y = indiv.loc.x, indiv.loc.y
                 if 0 <= x < self.params.size_x and 0 <= y < self.params.size_y:
                     grid[x][y] = 1
+                else:
+                    print(f"Individual out of bounds: ({x}, {y})")
         combined_grid = [[grid[x][y] + 0.5 * self.signals.grid[x][y] for y in range(self.params.size_y)] for x in range(self.params.size_x)]
-        plt.imshow(combined_grid, cmap='hot', interpolation='nearest')
-        plt.title(f'Simulation Generation {generation}')
-        plt.show()
+        self.ax.clear()
+        self.ax.set_facecolor('white')  # Set the background color to white
+        self.ax.imshow(combined_grid, cmap='hot', interpolation='nearest')
+        self.ax.set_title(f'Simulation Generation {self.generation}')
+        print(f"Visualising Generation {self.generation}")
 
-    def log_stats(self, generation):
+    def log_stats(self):
         alive_count = sum(1 for indiv in self.population if indiv.alive)
-        print(f"Generation {generation}: Alive {alive_count}/{self.params.population}")
+        print(f"Generation {self.generation}: Alive {alive_count}/{self.params.population}")
+        for indiv in self.population:
+            if indiv.alive:
+                print(f"Individual at ({indiv.loc.x}, {indiv.loc.y})")
+
+    def animate(self, _):
+        self.run_generation()
+        if self.generation % self.params.visualise_interval == 0:
+            self.log_stats()
+            self.visualise()
+        self.reproduce()
+        self.generation += 1
 
 # --- Entry Point ---
 if __name__ == "__main__":
     sim = Simulation()
-    for gen in range(10):
-        sim.run_generation()
-        sim.log_stats(gen)
-        if gen % sim.params.visualise_interval == 0:
-            sim.visualise(gen)
-        sim.reproduce()
+    anim = FuncAnimation(sim.fig, sim.animate, frames=generations, repeat=False, blit=False)
+    plt.show()
 
