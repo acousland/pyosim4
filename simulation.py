@@ -5,12 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from enum import Enum
 
-generations = 20
-population = 10
-steps_per_generation = 50
-mutation_rate = 0.01
-survivor_fraction = 0.2
-visualise_interval = 2
+generations = 10
 
 # --- Enums for Sensors and Actions ---
 class Sensor(Enum):
@@ -152,13 +147,13 @@ class NeuralNet:
 
 # --- Individual ---
 class Indiv:
-    def __init__(self, genome=None):
+    def __init__(self, genome=None, grid_size_x=100, grid_size_y=100):
         self.genome = genome.copy() if genome else Genome()
         if genome is None:
             self.genome.generate_random()
         self.nnet = NeuralNet()
         self.nnet.build_from_genome(self.genome)
-        self.loc = Coord()
+        self.loc = Coord(random.randint(0, grid_size_x - 1), random.randint(0, grid_size_y - 1))  # Random initial location
         self.facing = random.choice([Coord(1,0), Coord(-1,0), Coord(0,1), Coord(0,-1)])
         self.alive = True
         self.oscillator_phase = 0.0
@@ -231,7 +226,7 @@ class Parameters:
     def __init__(self, config_file=None):
         self.size_x = 100
         self.size_y = 100
-        self.population = 100
+        self.population = 3
         self.steps_per_generation = 50
         self.mutation_rate = 0.01
         self.survivor_fraction = 0.2
@@ -242,6 +237,7 @@ class Parameters:
     def load_config(self, config_file):
         with open(config_file, 'r') as f:
             config = json.load(f)
+            print(f"Loaded config: {config}")
         for key, value in config.items():
             if hasattr(self, key):
                 setattr(self, key, value)
@@ -250,7 +246,7 @@ class Parameters:
 class Simulation:
     def __init__(self, config_file=None):
         self.params = Parameters(config_file)
-        self.population = [Indiv() for _ in range(self.params.population)]
+        self.population = [Indiv(grid_size_x=self.params.size_x, grid_size_y=self.params.size_y) for _ in range(self.params.population)]
         self.signals = SignalLayer(self.params.size_x, self.params.size_y)
         self.fig, self.ax = plt.subplots()
         self.fig.patch.set_facecolor('white')  # Set the figure background color to white
@@ -270,7 +266,7 @@ class Simulation:
         survivors = [indiv for indiv in self.population if indiv.alive]
         if not survivors:
             survivors = random.sample(self.population, 1)
-        self.population = [Indiv(random.choice(survivors).genome.copy().mutate(self.params.mutation_rate)) for _ in range(self.params.population)]
+        self.population = [Indiv(random.choice(survivors).genome.copy().mutate(self.params.mutation_rate), grid_size_x=self.params.size_x, grid_size_y=self.params.size_y) for _ in range(self.params.population)]
 
     def visualise(self):
         grid = [[0 for _ in range(self.params.size_y)] for _ in range(self.params.size_x)]
@@ -305,7 +301,6 @@ class Simulation:
 
 # --- Entry Point ---
 if __name__ == "__main__":
-    sim = Simulation()
+    sim = Simulation('config.json')
     anim = FuncAnimation(sim.fig, sim.animate, frames=generations, repeat=False, blit=False)
     plt.show()
-

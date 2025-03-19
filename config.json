@@ -1,0 +1,10 @@
+{
+    "size_x": 1000,
+    "size_y": 1000,
+    "population": 100,
+    "steps_per_generation": 10,
+    "mutation_rate": 0.01,
+    "survivor_fraction": 0.2,
+    "visualise_interval": 2,
+    "generations": 20
+}
