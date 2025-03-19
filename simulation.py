@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from enum import Enum
 
-generations = 10
+generations = 500
 
 # --- Enums for Sensors and Actions ---
 class Sensor(Enum):
@@ -176,10 +176,10 @@ class Indiv:
         if actions[Action.MOVE_RANDOM.value] > 0.5:
             move_vector += Coord(random.choice([-1,0,1]), random.choice([-1,0,1]))
 
-        print(f"Before move: ({self.loc.x}, {self.loc.y})")
+        #print(f"Before move: ({self.loc.x}, {self.loc.y})")
         self.loc.x += max(-1, min(1, move_vector.x))
         self.loc.y += max(-1, min(1, move_vector.y))
-        print(f"After move: ({self.loc.x}, {self.loc.y})")
+        #print(f"After move: ({self.loc.x}, {self.loc.y})")
 
         if 0 <= self.loc.x < len(signal_layer.grid) and 0 <= self.loc.y < len(signal_layer.grid[0]):
             if actions[Action.EMIT_SIGNAL0.value] > 0.5:
@@ -275,21 +275,21 @@ class Simulation:
                 x, y = indiv.loc.x, indiv.loc.y
                 if 0 <= x < self.params.size_x and 0 <= y < self.params.size_y:
                     grid[x][y] = 1
-                else:
-                    print(f"Individual out of bounds: ({x}, {y})")
+                #else:
+                    #print(f"Individual out of bounds: ({x}, {y})")
         combined_grid = [[grid[x][y] + 0.5 * self.signals.grid[x][y] for y in range(self.params.size_y)] for x in range(self.params.size_x)]
         self.ax.clear()
         self.ax.set_facecolor('white')  # Set the background color to white
         self.ax.imshow(combined_grid, cmap='hot', interpolation='nearest')
         self.ax.set_title(f'Simulation Generation {self.generation}')
-        print(f"Visualising Generation {self.generation}")
+        #print(f"Visualising Generation {self.generation}")
 
     def log_stats(self):
         alive_count = sum(1 for indiv in self.population if indiv.alive)
         print(f"Generation {self.generation}: Alive {alive_count}/{self.params.population}")
-        for indiv in self.population:
-            if indiv.alive:
-                print(f"Individual at ({indiv.loc.x}, {indiv.loc.y})")
+        #for indiv in self.population:
+        #    if indiv.alive:
+        #        print(f"Individual at ({indiv.loc.x}, {indiv.loc.y})")
 
     def animate(self, _):
         self.run_generation()
