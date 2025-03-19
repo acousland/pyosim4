@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from enum import Enum
 
-generations = 500
+generations = 20
 
 # --- Enums for Sensors and Actions ---
 class Sensor(Enum):
@@ -70,7 +70,7 @@ class Coord:
         return Coord(self.x + other.x, self.y + other.y)
 
     def __sub__(self, other):
-        return Coord(self.x - other.x, self.y - other.y)
+        return Coord(self.x - other.x)
 
     def ray_sameness(self, other):
         dot = self.x * other.x + self.y * other.y
@@ -224,13 +224,16 @@ class SignalLayer:
 # --- Simulation Parameters ---
 class Parameters:
     def __init__(self, config_file=None):
+        # Initialize default values
         self.size_x = 100
         self.size_y = 100
-        self.population = 3
+        self.population = 100
         self.steps_per_generation = 50
         self.mutation_rate = 0.01
         self.survivor_fraction = 0.2
         self.visualise_interval = 2
+        
+        # Load values from config file if provided
         if config_file:
             self.load_config(config_file)
 
@@ -248,9 +251,12 @@ class Simulation:
         self.params = Parameters(config_file)
         self.population = [Indiv(grid_size_x=self.params.size_x, grid_size_y=self.params.size_y) for _ in range(self.params.population)]
         self.signals = SignalLayer(self.params.size_x, self.params.size_y)
-        self.fig, self.ax = plt.subplots()
+        
+        # Create subplots
+        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(12, 6))
         self.fig.patch.set_facecolor('white')  # Set the figure background color to white
-        self.ax.set_facecolor('white')  # Set the axes background color to white
+        self.ax1.set_facecolor('white')  # Set the axes background color to white
+        self.ax2.set_facecolor('white')  # Set the axes background color to white
         self.generation = 0
 
     def run_generation(self):
@@ -260,9 +266,12 @@ class Simulation:
                     sensors = [indiv.get_sensor_value(i, self.signals, self.population) for i in range(Sensor.NUM_SENSES.value)]
                     actions = indiv.nnet.feed_forward(sensors)
                     indiv.execute_actions(actions, self.signals, self.population)
+            alive_count = sum(1 for indiv in self.population if indiv.alive)
+            print(f"step: Alive {alive_count}/{self.params.population}")
             self.signals.fade()
 
     def reproduce(self):
+        print("Reproducing")
         survivors = [indiv for indiv in self.population if indiv.alive]
         if not survivors:
             survivors = random.sample(self.population, 1)
@@ -278,11 +287,25 @@ class Simulation:
                 #else:
                     #print(f"Individual out of bounds: ({x}, {y})")
         combined_grid = [[grid[x][y] + 0.5 * self.signals.grid[x][y] for y in range(self.params.size_y)] for x in range(self.params.size_x)]
-        self.ax.clear()
-        self.ax.set_facecolor('white')  # Set the background color to white
-        self.ax.imshow(combined_grid, cmap='hot', interpolation='nearest')
-        self.ax.set_title(f'Simulation Generation {self.generation}')
-        #print(f"Visualising Generation {self.generation}")
+        
+        # Plot the matrix
+        self.ax1.clear()
+        self.ax1.set_facecolor('white')  # Set the background color to white
+        self.ax1.imshow(combined_grid, cmap='hot', interpolation='nearest')
+        self.ax1.set_title(f'Simulation Generation {self.generation}')
+        
+        # Plot genome characteristics
+        gene_weights = []
+        for indiv in self.population:
+            gene_weights.extend([gene.weight for gene in indiv.genome.genes])
+        
+        self.ax2.clear()
+        self.ax2.hist(gene_weights, bins=50, color='green', alpha=0.7)
+        self.ax2.set_title('Gene Weight Distribution')
+        self.ax2.set_xlabel('Gene Weight')
+        self.ax2.set_ylabel('Frequency')
+        
+        plt.draw()
 
     def log_stats(self):
         alive_count = sum(1 for indiv in self.population if indiv.alive)
@@ -304,3 +327,4 @@ if __name__ == "__main__":
     sim = Simulation('config.json')
     anim = FuncAnimation(sim.fig, sim.animate, frames=generations, repeat=False, blit=False)
     plt.show()
+
