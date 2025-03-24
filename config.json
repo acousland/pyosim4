@@ -1,9 +1,10 @@
 {
     "size_x": 30,
     "size_y": 30,
-    "population": 1000,
-    "steps_per_generation": 50,
+    "population": 10,
+    "steps_per_generation": 10,
     "mutation_rate": 0.1,
     "survivor_fraction": 0.5,
-    "visualise_interval": 2
+    "visualise_interval": 1,
+    "intergenerational_mode": "False"
 }
